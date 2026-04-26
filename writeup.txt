@@ -98,7 +98,7 @@
 		Content-Length: 345
 		Connection: close
 		Date: Sat, 25 Apr 2026 13:59:56 GMT
-		Server: lighttpd THM{web_server_25352}
+		Server: lighttpd THM{flag}
 
 		<?xml version="1.0" encoding="iso-8859-1"?>
 		<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
@@ -122,7 +122,7 @@
 		Trying 10.114.140.2...
 		Connected to 10.114.140.2.
 		Escape character is '^]'.
-		SSH-2.0-OpenSSH_8.2p1 THM{946219583339} 
+		SSH-2.0-OpenSSH_8.2p1 THM{flag} 
 		^C
 		Connection closed by foreign host
 #Success as we can see the SSH server response with flag
@@ -242,7 +242,7 @@
 	221 Goodbye.
 	#we can see that we have a ftp_flag.txt - download the flag to your machine using the get command - open using cat or a text editor such as nano/vim to view
 	cat ftp_flag.txt
-	THM{321452667098}
+	THM{flag}
 
 #Browsing to http://10.114.140.2:8080 displays a small challenge that will give you a flag once you solve it. What is the flag?
 #unfortunately, this didnt work on local machine, so I had to launch attackbox within thm.
@@ -275,4 +275,4 @@
 	           Raw packets sent: 65545 (2.622MB) | Rcvd: 65536 (2.622MB)
 
 #once checking the website http://TARGET_IP:8080 - we received a flag 
-	THM{f7443f99}
+	THM{flag}
